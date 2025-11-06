@@ -9,14 +9,29 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // URL에서 키워드 파라미터 가져오기
+  // URL에서 파라미터 가져오기
   const { searchParams } = new URL(request.url);
   const keyword = searchParams.get("keyword") || "mantle";
-  const maxResults = searchParams.get("max_results") || "50";
+  const minLikes = searchParams.get("min_likes") || "0";
+  const minRetweets = searchParams.get("min_retweets") || "0";
+  const minReplies = searchParams.get("min_replies") || "0";
+  const maxResults = "10"; // 10개로 고정
 
   try {
-    // 검색 쿼리 구성: 키워드 OR @멘션 OR #해시태그
-    const searchQuery = `(${keyword} OR @${keyword} OR #${keyword}) -scam -giveaway`;
+    // 검색 쿼리 구성: 키워드 OR @멘션 OR #해시태그 + 필터
+    let searchQuery = `(${keyword} OR @${keyword} OR #${keyword}) -scam -giveaway`;
+
+    // Twitter API 필터 추가
+    if (parseInt(minLikes) > 0) {
+      searchQuery += ` min_faves:${minLikes}`;
+    }
+    if (parseInt(minRetweets) > 0) {
+      searchQuery += ` min_retweets:${minRetweets}`;
+    }
+    if (parseInt(minReplies) > 0) {
+      searchQuery += ` min_replies:${minReplies}`;
+    }
+
     const query = encodeURIComponent(searchQuery);
 
     // Twitter API v2 - Recent Search (최근 7일)
@@ -31,6 +46,26 @@ export async function GET(request: Request) {
 
     if (!response.ok) {
       const error = await response.json();
+
+      // Rate limit 정보 추출
+      const rateLimitRemaining = response.headers.get("x-rate-limit-remaining");
+      const rateLimitReset = response.headers.get("x-rate-limit-reset");
+
+      if (response.status === 429) {
+        const resetTime = rateLimitReset
+          ? new Date(parseInt(rateLimitReset) * 1000).toLocaleString("ko-KR")
+          : "알 수 없음";
+
+        return NextResponse.json(
+          {
+            error: "API 사용량 초과",
+            message: `너무 많은 요청을 보냈습니다. ${resetTime}에 다시 시도하세요.`,
+            details: error,
+          },
+          { status: 429 }
+        );
+      }
+
       return NextResponse.json(
         { error: "Twitter API error", details: error },
         { status: response.status }

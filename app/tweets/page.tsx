@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 interface Tweet {
   id: string;
@@ -21,6 +21,11 @@ export default function TweetsPage() {
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // 필터 상태
+  const [minLikes, setMinLikes] = useState(0);
+  const [minRetweets, setMinRetweets] = useState(0);
+  const [minReplies, setMinReplies] = useState(0);
+
   const searchTweets = async () => {
     if (!keyword.trim()) {
       setError("키워드를 입력하세요");
@@ -31,13 +36,23 @@ export default function TweetsPage() {
     setError("");
 
     try {
-      const response = await fetch(
-        `/api/tweets/search?keyword=${encodeURIComponent(keyword)}&max_results=50`
-      );
+      // 필터 조건을 쿼리에 포함
+      const params = new URLSearchParams({
+        keyword: keyword,
+        min_likes: minLikes.toString(),
+        min_retweets: minRetweets.toString(),
+        min_replies: minReplies.toString(),
+      });
+
+      const response = await fetch(`/api/tweets/search?${params}`);
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "트윗을 가져오는데 실패했습니다");
+        const errorMessage =
+          errorData.message ||
+          errorData.error ||
+          "트윗을 가져오는데 실패했습니다";
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -55,33 +70,83 @@ export default function TweetsPage() {
       <div className="container mx-auto p-8 max-w-5xl">
         {/* 헤더 */}
         <div className="mb-10">
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">
-            트윗 검색
-          </h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-3">트윗 검색</h1>
           <p className="text-lg text-gray-600">
             키워드를 입력하면 텍스트, @멘션, #해시태그를 모두 검색합니다
           </p>
         </div>
 
         {/* 검색 입력 */}
-        <div className="mb-8">
-          <div className="flex gap-3">
+        <div className="mb-8 p-6 bg-gray-50 border-2 border-gray-200 rounded-xl">
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              검색 키워드
+            </label>
             <input
               type="text"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               placeholder="검색할 키워드 (예: mantle)"
-              className="flex-1 px-5 py-3 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 bg-white text-gray-900"
+              className="w-full px-5 py-3 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 bg-white text-black placeholder:text-black"
               onKeyPress={(e) => e.key === "Enter" && searchTweets()}
             />
-            <button
-              onClick={searchTweets}
-              disabled={loading}
-              className="px-8 py-3 text-lg font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition shadow-sm"
-            >
-              {loading ? "검색 중..." : "검색"}
-            </button>
           </div>
+
+          {/* 필터 */}
+          <div className="mb-6">
+            <h3 className="font-semibold text-gray-900 mb-3 text-sm">
+              필터 조건 (선택사항)
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  최소 좋아요 ❤️
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={minLikes}
+                  onChange={(e) => setMinLikes(Number(e.target.value))}
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 bg-white text-black placeholder:text-black"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  최소 리트윗 🔄
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={minRetweets}
+                  onChange={(e) => setMinRetweets(Number(e.target.value))}
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 bg-white text-black placeholder:text-black"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  최소 댓글 💬
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={minReplies}
+                  onChange={(e) => setMinReplies(Number(e.target.value))}
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 bg-white text-black placeholder:text-black"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={searchTweets}
+            disabled={loading}
+            className="w-full px-8 py-3 text-lg font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition shadow-sm"
+          >
+            {loading ? "검색 중..." : "검색"}
+          </button>
         </div>
 
         {/* 검색 쿼리 표시 */}
@@ -107,8 +172,8 @@ export default function TweetsPage() {
         {/* 결과 카운트 */}
         {tweets.length > 0 && (
           <div className="mb-6 text-gray-700 font-medium text-lg">
-            총 <span className="text-blue-600 font-bold">{tweets.length}</span>
-            개의 트윗을 찾았습니다
+            <span className="text-blue-600 font-bold">{tweets.length}</span>개의
+            트윗을 찾았습니다
           </div>
         )}
 
