@@ -1,0 +1,171 @@
+"use client";
+
+import { useState } from "react";
+
+interface Tweet {
+  id: string;
+  text: string;
+  created_at: string;
+  author_id: string;
+  public_metrics: {
+    like_count: number;
+    retweet_count: number;
+    reply_count: number;
+  };
+}
+
+export default function TweetsPage() {
+  const [keyword, setKeyword] = useState("mantle");
+  const [tweets, setTweets] = useState<Tweet[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const searchTweets = async () => {
+    if (!keyword.trim()) {
+      setError("키워드를 입력하세요");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `/api/tweets/search?keyword=${encodeURIComponent(keyword)}&max_results=50`
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "트윗을 가져오는데 실패했습니다");
+      }
+
+      const data = await response.json();
+      setTweets(data.tweets || []);
+      setSearchQuery(data.query || "");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "에러 발생");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-white">
+      <div className="container mx-auto p-8 max-w-5xl">
+        {/* 헤더 */}
+        <div className="mb-10">
+          <h1 className="text-4xl font-bold text-gray-900 mb-3">
+            트윗 검색
+          </h1>
+          <p className="text-lg text-gray-600">
+            키워드를 입력하면 텍스트, @멘션, #해시태그를 모두 검색합니다
+          </p>
+        </div>
+
+        {/* 검색 입력 */}
+        <div className="mb-8">
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder="검색할 키워드 (예: mantle)"
+              className="flex-1 px-5 py-3 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 bg-white text-gray-900"
+              onKeyPress={(e) => e.key === "Enter" && searchTweets()}
+            />
+            <button
+              onClick={searchTweets}
+              disabled={loading}
+              className="px-8 py-3 text-lg font-semibold bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition shadow-sm"
+            >
+              {loading ? "검색 중..." : "검색"}
+            </button>
+          </div>
+        </div>
+
+        {/* 검색 쿼리 표시 */}
+        {searchQuery && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <span className="font-semibold text-gray-900">검색 쿼리:</span>{" "}
+            <code className="text-blue-700 font-mono text-sm">
+              {searchQuery}
+            </code>
+          </div>
+        )}
+
+        {/* 에러 표시 */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-800 rounded">
+            <div className="flex items-center">
+              <span className="text-xl mr-2">⚠️</span>
+              <span className="font-medium">{error}</span>
+            </div>
+          </div>
+        )}
+
+        {/* 결과 카운트 */}
+        {tweets.length > 0 && (
+          <div className="mb-6 text-gray-700 font-medium text-lg">
+            총 <span className="text-blue-600 font-bold">{tweets.length}</span>
+            개의 트윗을 찾았습니다
+          </div>
+        )}
+
+        {/* 결과 표시 */}
+        <div className="space-y-5">
+          {tweets.length === 0 && !loading && !error && (
+            <div className="text-center py-16 bg-gray-50 rounded-xl">
+              <p className="text-gray-500 text-lg">
+                검색 버튼을 눌러 트윗을 검색하세요
+              </p>
+            </div>
+          )}
+
+          {tweets.map((tweet) => (
+            <div
+              key={tweet.id}
+              className="p-6 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-md transition"
+            >
+              <p className="text-gray-900 text-lg mb-4 leading-relaxed whitespace-pre-wrap">
+                {tweet.text}
+              </p>
+              <div className="flex items-center gap-6 text-gray-600 text-sm mb-3">
+                <span className="flex items-center gap-1">
+                  <span className="text-red-500">❤️</span>
+                  <span className="font-medium">
+                    {tweet.public_metrics?.like_count || 0}
+                  </span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="text-green-500">🔄</span>
+                  <span className="font-medium">
+                    {tweet.public_metrics?.retweet_count || 0}
+                  </span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="text-blue-500">💬</span>
+                  <span className="font-medium">
+                    {tweet.public_metrics?.reply_count || 0}
+                  </span>
+                </span>
+                <span className="ml-auto text-gray-500">
+                  {new Date(tweet.created_at).toLocaleString("ko-KR")}
+                </span>
+              </div>
+              <a
+                href={`https://x.com/i/web/status/${tweet.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm hover:underline"
+              >
+                트윗 보기
+                <span className="ml-1">→</span>
+              </a>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
