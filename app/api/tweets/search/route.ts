@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   // URL에서 키워드 파라미터 가져오기
   const { searchParams } = new URL(request.url);
   const keyword = searchParams.get("keyword") || "mantle";
-  const maxResults = searchParams.get("max_results") || "10";
+  const maxResults = "10"; // 10개로 고정
 
   try {
     // 검색 쿼리 구성: 키워드 OR @멘션 OR #해시태그
