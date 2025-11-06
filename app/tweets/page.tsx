@@ -32,7 +32,9 @@ export default function TweetsPage() {
 
     try {
       const response = await fetch(
-        `/api/tweets/search?keyword=${encodeURIComponent(keyword)}&max_results=50`
+        `/api/tweets/search?keyword=${encodeURIComponent(
+          keyword
+        )}&max_results=50`
       );
 
       if (!response.ok) {
@@ -55,9 +57,7 @@ export default function TweetsPage() {
       <div className="container mx-auto p-8 max-w-5xl">
         {/* 헤더 */}
         <div className="mb-10">
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">
-            트윗 검색
-          </h1>
+          <h1 className="text-4xl font-bold text-gray-900 mb-3">트윗 검색</h1>
           <p className="text-lg text-gray-600">
             키워드를 입력하면 텍스트, @멘션, #해시태그를 모두 검색합니다
           </p>
@@ -83,16 +83,6 @@ export default function TweetsPage() {
             </button>
           </div>
         </div>
-
-        {/* 검색 쿼리 표시 */}
-        {searchQuery && (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <span className="font-semibold text-gray-900">검색 쿼리:</span>{" "}
-            <code className="text-blue-700 font-mono text-sm">
-              {searchQuery}
-            </code>
-          </div>
-        )}
 
         {/* 에러 표시 */}
         {error && (
